@@ -15,6 +15,12 @@ resources:
   source:
     <<: *S3PARAMS
     regexp: release/hoge-(.*).txt
+- name: image
+  type: docker-image
+  source:
+    repository: registry.udcp.info/private/test-image 
+    username: {{registry_username}}
+    password: {{registry_password}}
 
 jobs:
   - name: build-dockerimage
@@ -29,10 +35,33 @@ jobs:
           source:
             repository: alpine
         inputs:
-          - name: build-dockerimage
+          - name: git-dockerbuild-sample
           - name: binary
+        outputs:
+          - name: results
         run:
           path: sh
           args:
           - -c
-          - find .
+          - |
+            find .
+            cat binary/version
+            cp binary/hoge-`cat binary/version`.txt results/hoge.txt
+            cp git-dockerbuild-sample/Dockerfile results/
+    - task: show
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: alpine
+        inputs:
+          - name: results
+        run:
+          path: sh
+          args:
+          - -c
+          - |
+            find .
+    - put: image
+      params: {build: results}
